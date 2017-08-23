@@ -1,0 +1,66 @@
+html {
+    height: 100vh;
+}
+
+body {
+    font-family: 'Noto Sans', sans-serif;
+    height: 100vh;
+}
+
+.panel {
+    background: #f2f2f2;
+}
+
+.container {
+    padding-right: 0;
+    margin-right: auto;
+}
+
+#mynetwork {
+    padding-top: 20px;
+    padding-bottom: 20px;
+    position: relative;
+    height: 100vh;
+}
+
+#loader {
+    display:none;
+    top:0;
+    left:0;
+    position:fixed;
+    width:100%;
+    height:100%;
+    background-color:#f2f2f2;
+    opacity: 0.5;
+}
+
+img {
+    display:block;
+    margin:auto;
+    padding:300px;
+}
+
+
+div.popup {
+    position:absolute;
+    top:0px;
+    left:0px;
+    display:none;
+    background-color:#f2f2f2;
+    font-family: 'Noto Sans', sans-serif;
+    border: 1px solid #d9d9d9;
+    border-radius: 5px;
+    padding: 10px 10px 10px 10px;
+    box-shadow:3px 3px 10px rgba(0,0,0,.2);
+}
+
+div.vis-tooltip {
+    background-color:#f2f2f2;
+    font-family: 'Noto Sans', sans-serif;
+    border: 1px solid #d9d9d9;
+    border-radius: 5px;
+    padding: 10px 10px 10px 10px;
+}
+
+
+

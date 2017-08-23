@@ -1,0 +1,461 @@
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3">
+                <h1 class="text-center"><strong>Web Crawler</strong></h1>
+                <br>
+
+        
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <p>This web crawler will perform a breadth-first
+                traversal and show you the results of the crawl!
+                Just type in a starting URL and how many "steps" 
+                the crawler should traverse. Optionally, you
+                may give the crawler a keyword -- if the crawler 
+                happens to come across that word, it will halt.</p>    
+            
+                        <br>
+        
+                        <form action="/post" method="post" enctype="multipart/form-data" onsubmit="validateURL(this)">
+                            <div class="form-group">
+                                <label for="url">Starting URL:</label>
+                                <input name="url" type="text" class="form-control" id="url" placeholder="URL" required>
+                            </div>
+            
+                            <div class="form-group">
+                                <label for="steps">Steps to traverse:</label>
+                                <select name="steps" class="form-control" id="steps" placeholder="Steps">
+                                    <option>1</option>
+                                    <option>2</option>
+                                    <option>3</option>
+                                </select>
+                            </div>
+            
+                            <div class="form-group">
+                                <label for="text">Keyword to halt traversal (optional):</label>
+                                <input name="keyword" type="text" class="form-control" id="keyword" placeholder="Keyword">
+                            </div>
+                
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-default">Go!</button>
+                            </div> 
+                            
+                            <script type="text/javascript">
+                                // Validate the user input from the form to 
+                                // make sure the URL begins with "http://"
+                                function validateURL(form) {
+                                    var url = form.url.value.toLowerCase();
+                                    if (!(url.startsWith("http://") || 
+                                    url.startsWith("https://"))) {
+                                        form.url.value = "http://" + url;
+                                    }
+                                }
+                            </script>
+                        </form> 
+                    </div> <!-- panel body -->
+                </div> <!-- panel -->
+            </div> <!-- col --> 
+    
+           <div class="wrapper">
+                <div class="col-md-9" id="mynetwork"></div>
+                <div class="loader" id="loader">       
+                    <img src="/load.gif" alt="Loading..."></img>
+                </div>
+            </div>
+            
+            <script type="text/javascript">
+            
+                // Create a custom popup for clicking on nodes.
+                // This will display clickable urls
+                var popupState = false;
+                var popupTimeout = null;
+                var popup = document.createElement("div");
+                popup.className = 'popup';
+                
+                
+                // Create the network
+                
+                // arrays of objects
+                var nodes = []; 
+                var edges = [];
+
+                // Open temp JSON file with crawled sites
+                var fileName = "/temp.json";
+                var request = new XMLHttpRequest();
+                request.open("GET", fileName, true);
+                request.responseType = "json";
+                request.send();
+                
+                request.onload = function() {
+                    var graph = request.response;
+                    var i, j;
+                    var idNum = 1;
+                    var nodeIds = [];   // to keep track of the nodes already created
+        
+                    // For each url that has been crawled, create a node
+                    for (i = 0; i < graph.length; i++) {
+        
+                        var baseUrlId;      // to keep track of the node to link from
+                        var keywordNodeId;  // the id of the 'keywordFound' node
+                        
+                        // get the center node
+                        if (i == 0) {
+                            nodes.push({
+                                id: idNum++,
+                                title: graph[0].baseurl,
+                                color: '#000000'  // black
+                            });
+                            baseUrlId = 1;
+                        }
+            
+                        else {  // find parent ID to link child to
+                            for (var k = 0; k < nodeIds.length; k++) {
+                                if (nodeIds[k].url === graph[i].baseurl) {
+                                    baseUrlId = nodeIds[k].id;
+                                }
+                            }
+                        }
+            
+                        // Create a node for each link found on the page
+                        for (j = 0; j < graph[i].links.length; j++) {
+            
+                            // create the node
+                
+                            var getId = nodeExists(graph[i].links[j].url,
+                                graph[i].links[j].name);
+                            
+                            // if the node hasn't been created yet
+                            if (getId == -1) {
+                                var t = getTitle(i, j);
+                                // If this node contains the halting keyword
+                                if (t === "keywordFound") {
+                                    nodes.push({
+                                        id: idNum,
+                                        title: "Keyword Found!",
+                                        color: getRandomColor(),
+                                        shape: 'star',
+                                        size: 22,
+                                        color: {
+                                            border: "#000000"
+                                        }
+                                    });
+                                }
+                                
+                                // If this node is just a normal node
+                                else {
+                                    nodes.push({
+                                        id: idNum, 
+                                        title: t,
+                                        color: getRandomColor()
+                                    });
+                                }
+                                
+                                // Check if an edge for this pair has been created yet
+                                if (!edgeExists(baseUrlId, idNum)) {
+                                
+                                    // create the edge
+                                    edges.push({
+                                        from: baseUrlId,
+                                        to: idNum
+                                    });
+                                }
+                
+                                // store the node ID for future lookup
+                                nodeIds.push({
+                                    id: idNum++,
+                                    url: graph[i].links[j].url,
+                                    title: getTitle(i, j)
+                                });
+                            }
+                            
+                            else {      // node already exists
+                            
+                                // Check if an edge for this pair has been created yet
+                                if (!edgeExists(baseUrlId, getId)) {
+                                    
+                                    // create the edge
+                                    edges.push({
+                                        from: baseUrlId,
+                                        to: getId
+                                    });
+                                }
+                                
+                            }
+                        }
+                        
+                    }
+                   
+
+                    // create a network
+                    var container = document.getElementById("mynetwork");
+
+                    // provide the data in the vis format
+                    var data = {
+                        nodes: nodes,
+                        edges: edges
+                    };
+                    
+                    // Specify options
+                    var options = {
+                        nodes: {
+                            shape: 'circle',
+                        },
+                        interaction: {
+                            tooltipDelay: 0,
+                            hover: true
+                        },
+                        physics: {
+                            stabilization: {
+                                updateInterval: 5
+                            }
+                        }
+                    };
+
+                    // initialize the network
+                    var network = new vis.Network(container, data, options);
+                    container.appendChild(popup);
+                    
+                    // Create the spinning loading wheel
+                    network.on("stabilizationProgress", function(params) {
+                            loader.style.display = 'block';
+                    });
+                    
+                    // Turn off the loading wheel once the page is done loading
+                    network.once("stabilizationIterationsDone", function() {
+                        loader.style.display = 'none';
+                    });
+                    
+                    // show info about link when node is clicked
+                    network.on('click', function(obj) {
+                        if (obj.nodes.length === 0) {
+                            hidePopup();
+                            resumeTooltip();    // allow tooltip to be shown again
+                        }
+                        else {
+                            showPopup(obj.nodes[0]);
+                            hideTooltip();      // hide the native tooltip
+                        }
+                    });
+                    
+                    // Popup should go away when dragging the graph
+                    network.on('dragStart', function() {
+                        hidePopup(0);
+                        popupState = false;
+                        resumeTooltip();    // allow tooltip to be shown again
+                    });
+                    
+                    // Popup should go away when zooming
+                    network.on('zoom', function() {
+                        hidePopup(0);
+                        popupState = false;
+                        resumeTooltip();    // allow tooltip to be shown again
+                    });
+                    
+                    // Popup should go away when a node is hovered over
+                    network.on('hoverNode', function(params) {
+                        hidePopup(0);
+                        popupState = false;
+                        resumeTooltip();    // allow tooltip to be shown again
+                    });
+                    
+                    // Hide the popup
+                    function hidePopup(delay) {
+                        popupTimeout = setTimeout(function() {
+                            popup.style.display = 'none';
+                        }, delay);
+                    }
+                    
+                    // Hide the native tooltip
+                    function hideTooltip() {
+                        var tooltip = 
+                        document.getElementsByClassName("vis-tooltip");
+                        tooltip[0].style.display = 'none';
+                    }
+                    
+                    // Allow the native tooltip to be shown again
+                    function resumeTooltip() {
+                        var tooltip = 
+                        document.getElementsByClassName("vis-tooltip");
+                        tooltip[0].style.display = 'block';
+                    }
+                    
+                    // Show the popup when clicking
+                    function showPopup(nodeId) {
+                    
+                        // get the info for the popup
+                        var url = getURL(nodeId);
+                       
+                        // Create hyperlink for popup
+                        var a = document.createElement('a');
+                        var text = document.createTextNode(url);
+                        a.setAttribute('href', url);
+                        a.setAttribute('target', '_blank');
+                        a.appendChild(text);
+                        
+                        // remove previous hyperlinks from popup
+                        while (popup.firstChild) {
+                            popup.removeChild(popup.firstChild);
+                        }
+                        // Add hyperlink to popup
+                        popup.appendChild(a);
+                        
+                        // get node position
+                        var posCanvas = network.getPositions([nodeId])[nodeId];
+                        
+                        // get bounding box of the node
+                        var boundingBox = network.getBoundingBox(nodeId);
+                        
+                        // position the popup
+                        posCanvas.x = posCanvas.x + 0.5 * 
+                            (boundingBox.right - boundingBox.left);
+                        
+                        // Convert coordinates
+                        var posDOM = network.canvasToDOM(posCanvas);
+                        
+                        // Create offset
+                        posDOM.x += 10;
+                        posDOM.y -= 20;
+                        
+                        // Place the popup
+                        popup.style.display = 'block';
+                        popup.style.top = posDOM.y + 'px';
+                        popup.style.left = posDOM.x + 'px';
+                    }
+                    
+                    // Check if a node for a certain URL has 
+                    // already been created
+                    function nodeExists(nodeUrl, keyword) {
+                        // if the keyword has been found on this page,
+                        // automatically create a new node so it can
+                        // be highlighted.
+                        if (keyword === "keywordFound") {
+                            return -1;
+                        }
+                        
+                        for (var k = 0; k < nodeIds.length; k++) {
+                            if (nodeIds[k].url === nodeUrl) {
+                                return nodeIds[k].id;
+                            }
+                        }
+                        return -1;  // node wasn't found
+                    }
+                    
+                    // Finds the URL of the node based on its ID
+                    function getURL(nodeID) {
+                        for (var k = 0; k < nodeIds.length; k++) {
+                            if (nodeIds[k].id === nodeID) {
+                                return nodeIds[k].url;
+                            }
+                        }
+                        // Not found, so it's the root node.
+                        return graph[0].baseurl;
+                        
+                    }
+                    
+                    // Adapted from: https://martin.ankerl.com/2009/12/09/
+                    // how-to-create-random-colors-programmatically/
+                    function getRandomColor() {
+                        var goldenRatioConjugate = 0.618033988749895;
+                        var h = Math.random();
+                        h += goldenRatioConjugate;
+                        h %= 1;
+                        return HSVtoHex(h, 0.5, 0.95);
+                    }
+                        
+                   // Adapted from: https://martin.ankerl.com/2009/12/09/
+                   // how-to-create-random-colors-programmatically/
+                    function HSVtoHex(h, s, v) {
+                        var r, g, b;
+                        var h1 = Math.floor(h * 6);
+                        var f = h * 6 - h1;
+                        var p = v * (1 - s);
+                        var q = v * (1 - f * s);
+                        var t = v * (1 - (1 - f) * s);
+                        
+                        switch (h1) {
+                            case 0: r = v; g = t; b = p; break;
+                            case 1: r = q; g = v; b = p; break;
+                            case 2: r = p; g = v; b = t; break;
+                            case 3: r = p; g = q; b = v; break;
+                            case 4: r = t; g = p; b = v; break;
+                            case 5: r = v, g = p; b = q; break;
+                        }
+                        
+                        // Find rgb value
+                        r = Math.floor(r * 256);
+                        g = Math.floor(g * 256);
+                        b = Math.floor(b * 256);
+                        
+                        // Convert to hex value
+                        var hex = '#';
+                        hex += r.toString(16);
+                        hex += g.toString(16);
+                        hex += b.toString(16);
+
+                        return hex;
+                        
+                    }
+                    
+                    // Get the title for the mouse-over popups
+                    function getTitle(i, j) {
+                    
+                        // if that node has a name, use that as the title
+                        if (graph[i].links[j].name.length != 0) {
+                            if (graph[i].links[j].name.trim != '' &&
+                            graph[i].links[j].name != ' ') {
+                                return graph[i].links[j].name;
+                            }
+                        }
+
+                        // otherwise, just use the url for the title
+                        return graph[i].links[j].url;
+                    }
+
+                    // To make the graph look cleaner, only have one edge between
+                    // node pairs, even if multiple links exist
+                    function edgeExists(node1, node2) {
+                        
+                        if (node1 === node2) {      // don't link nodes to themselves
+                            return true;
+                        }
+                        
+                        for (var k = 0; k < edges.length; k++) {
+                            if (edges[k].from === node1) {
+                                if (edges[k].to === node2) {
+                                    return true;   // edge exists
+                                }
+                            }
+                            else if (edges[k].to === node1) {
+                                if (edges[k].from === node2) {
+                                    return true;    // edge exists
+                                }
+                            }
+                        }
+                        
+                        return false;
+                    }
+                      
+                }
+    
+            </script>          
+        </div> <!-- row -->
+    </div> <!-- container -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
