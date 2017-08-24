@@ -12,7 +12,8 @@
     "jquery": "^3.2.1",
     "jsdom": "^11.1.0",
     "promise": "^8.0.1",
-    "request": "^2.81.0"
+    "request": "^2.81.0",
+    "body-parser": "1.9.2"
   },
   "devDependencies": {},
   "scripts": {
