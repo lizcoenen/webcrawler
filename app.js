@@ -23,7 +23,11 @@ var maxurls;
 
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
-app.set('port',7219)
+//app.set('port',7219)
+
+// process.env.PORT lets the port be set by Heroku
+var port = process.env.PORT || 8080;
+app.set('port', port);
 
 app.use(function (req, res, next) {
   // Website sending requests</code>
